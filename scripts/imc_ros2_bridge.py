@@ -48,12 +48,13 @@ from imc_ros_bridge.msg import Maneuver as ros_Maneuver
 
 class ImcRosBridge:
 
-    def __init__(self, server_ip, server_port, node):
+    def __init__(self, server_ip, server_port, imc_src, node):
 
         #imc
         self.imc_to_send_callback = None
         self.sock = imc_net.tcp_interface(server_ip, server_port)
         self.sub = imc_net.subscriber(self.sock, use_mp=False)
+        self.imc_src = imc_src
 
         #ros
         self._node = node
@@ -98,7 +99,8 @@ class ImcRosBridge:
         self._node.get_logger().info("Creating imc subscribers")
         self.sub.subscribe_async(self.imc_callback_EstimatedState, msg_id=imc.EstimatedState)
         self.sub.subscribe_async(self.imc_callback_DesiredHeading, msg_id=imc.DesiredHeading)
-        self.sub.subscribe_async(self.imc_callback_DesiredSpeed, msg_id=imc.DesiredSpeed)  
+        self.sub.subscribe_async(self.imc_callback_DesiredSpeed, msg_id=imc.DesiredSpeed)
+        #self.sub.subscribe_async(self.imc_callback_VehicleState, msg_id=imc.VehicleState)  
         
         
 
@@ -107,7 +109,7 @@ class ImcRosBridge:
 #                                ROS callbacks                                                      #
 ##################################################################################3##################
     def ros_callback_EstimatedState(self,ros_msg):
-        self._node.get_logger().info(f"Received ROS message: {ros_msg}")
+        #self._node.get_logger().info(f"Received ROS message: {ros_msg}")
         if(self.imc_to_send_callback == None):
             self._node.get_logger().error("Error could not send")
             return
@@ -133,23 +135,23 @@ class ImcRosBridge:
             depth = ros_msg.depth, 
             alt = ros_msg.alt
         )
-        self.imc_to_send_callback(imc_msg)
+        self.imc_to_send_callback(message = imc_msg, src = self.imc_src, dst = 0xFF)
 
     def ros_callback_DesiredHeading(self,ros_msg):
-        self._node.get_logger().info(f"Received ROS message: {ros_msg}")
+        #self._node.get_logger().info(f"Received ROS message: {ros_msg}")
         if(self.imc_to_send_callback == None):
             self._node.get_logger().error("Error could not send")
             return
         imc_msg = imc.DesiredHeading(ros_msg.value)
-        self.imc_to_send_callback(imc_msg)
+        self.imc_to_send_callback(imc_msg, self.imc_src, dst = 0xFF)
 
     def ros_callback_DesiredSpeed(self,ros_msg):
-        self._node.get_logger().info(f"Received ROS message: {ros_msg}")
+        #self._node.get_logger().info(f"Received ROS message: {ros_msg}")
         if(self.imc_to_send_callback == None):
             self._node.get_logger().error("Error could not send")
             return
         imc_msg = imc.DesiredSpeed(ros_msg.value)
-        self.imc_to_send_callback(imc_msg)
+        self.imc_to_send_callback(imc_msg, src = self.imc_src, dst = 0xFF)
         
 
 
@@ -196,9 +198,6 @@ class ImcRosBridge:
         self.ros_publisher_DesiredSpeed.publish(ros_msg)
 
 
-
-
-
 def main(args=None, namespace=None):
     rclpy.init(args=args)
 
@@ -207,10 +206,13 @@ def main(args=None, namespace=None):
     _node.declare_parameter('server_ip', "127.0.0.1")
     ip_address = _node.get_parameter('server_ip').value
 
-    _node.declare_parameter('tcp_port', 6003)
+    _node.declare_parameter('tcp_port', 7001)
     port = _node.get_parameter('tcp_port').value
 
-    bridge = ImcRosBridge(ip_address, port, _node)
+    _node.declare_parameter('imc_src', 0x0806)
+    imc_src = _node.get_parameter('imc_src').value
+
+    bridge = ImcRosBridge(ip_address, port, imc_src, _node)
     imc_thread = threading.Thread(target=bridge.run)
     print("Main    : before running thread")
     imc_thread.start()
