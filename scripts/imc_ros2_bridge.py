@@ -108,7 +108,7 @@ class ImcRosBridge:
 ##################################################################################3##################
 #                                ROS callbacks                                                      #
 ##################################################################################3##################
-    def ros_callback_EstimatedState(self,ros_msg):
+    def ros_callback_EstimatedState(self,ros_msg : ros_EstimatedState):
         #self._node.get_logger().info(f"Received ROS message: {ros_msg}")
         if(self.imc_to_send_callback == None):
             self._node.get_logger().error("Error could not send")
@@ -137,7 +137,7 @@ class ImcRosBridge:
         )
         self.imc_to_send_callback(message = imc_msg, src = self.imc_src, dst = 0xFF)
 
-    def ros_callback_DesiredHeading(self,ros_msg):
+    def ros_callback_DesiredHeading(self,ros_msg : ros_DesiredHeading):
         #self._node.get_logger().info(f"Received ROS message: {ros_msg}")
         if(self.imc_to_send_callback == None):
             self._node.get_logger().error("Error could not send")
@@ -145,12 +145,12 @@ class ImcRosBridge:
         imc_msg = imc.DesiredHeading(ros_msg.value)
         self.imc_to_send_callback(imc_msg, self.imc_src, dst = 0xFF)
 
-    def ros_callback_DesiredSpeed(self,ros_msg):
+    def ros_callback_DesiredSpeed(self,ros_msg : ros_DesiredSpeed):
         #self._node.get_logger().info(f"Received ROS message: {ros_msg}")
         if(self.imc_to_send_callback == None):
             self._node.get_logger().error("Error could not send")
             return
-        imc_msg = imc.DesiredSpeed(ros_msg.value)
+        imc_msg = imc.DesiredSpeed(ros_msg.value, ros_msg.speed_units)
         self.imc_to_send_callback(imc_msg, src = self.imc_src, dst = 0xFF)
         
 
@@ -211,6 +211,11 @@ def main(args=None, namespace=None):
 
     _node.declare_parameter('imc_src', 0x0806)
     imc_src = _node.get_parameter('imc_src').value
+
+    _node.get_logger().info(f"Server ip: {ip_address}")
+    _node.get_logger().info(f"Server port: {port}")
+    _node.get_logger().info(f"imc src: {imc_src}")
+
 
     bridge = ImcRosBridge(ip_address, port, imc_src, _node)
     imc_thread = threading.Thread(target=bridge.run)
