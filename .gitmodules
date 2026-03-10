@@ -1,3 +1,3 @@
 [submodule "scripts/pyimclsts"]
 	path = scripts/pyimclsts
-	url = git@github.com:LSTS/pyimclsts.git
+	url = https://github.com/LSTS/pyimclsts.git
